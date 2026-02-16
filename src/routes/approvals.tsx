@@ -12,7 +12,9 @@ export const Route = createFileRoute("/approvals")({
   component: ApprovalsPage,
 });
 
-const API_BASE_URL = "http://localhost:8000";
+import { env } from "@/env";
+
+const API_BASE_URL = env.VITE_API_BASE_URL;
 
 interface ApiApproval {
   id: string;

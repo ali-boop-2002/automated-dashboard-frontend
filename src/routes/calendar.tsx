@@ -17,7 +17,9 @@ export const Route = createFileRoute("/calendar")({
   component: CalendarPage,
 });
 
-const API_BASE_URL = "http://localhost:8000";
+import { env } from "@/env";
+
+const API_BASE_URL = env.VITE_API_BASE_URL;
 
 // ============= TYPES & INTERFACES =============
 interface ApiEvent {

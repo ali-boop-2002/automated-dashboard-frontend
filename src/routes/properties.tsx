@@ -15,12 +15,13 @@ import {
 import { useState, useEffect, useMemo } from "react";
 import { PropertyDetailModal } from "@/components/property-detail-modal";
 import { toast } from "sonner";
+import { env } from "@/env";
 
 export const Route = createFileRoute("/properties")({
   component: PropertiesPage,
 });
 
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = env.VITE_API_BASE_URL;
 
 interface ApiProperty {
   id: number;
