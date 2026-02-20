@@ -16,8 +16,11 @@ import { useState, useEffect, useMemo } from "react";
 import { PropertyDetailModal } from "@/components/property-detail-modal";
 import { toast } from "sonner";
 import { env } from "@/env";
+import { authFetch } from "@/lib/api";
+import { requireAuth } from "@/lib/auth-guard";
 
 export const Route = createFileRoute("/properties")({
+  beforeLoad: requireAuth,
   component: PropertiesPage,
 });
 
@@ -104,7 +107,7 @@ function PropertiesPage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(`${API_BASE_URL}/properties/stats`, {
+      const response = await authFetch(`${API_BASE_URL}/properties/stats`, {
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -132,7 +135,7 @@ function PropertiesPage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(`${API_BASE_URL}/properties`, {
+      const response = await authFetch(`${API_BASE_URL}/properties`, {
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -182,10 +185,10 @@ function PropertiesPage() {
   const filteredProperties = useMemo(() => {
     return properties.filter((property) => {
       const query = searchQuery.toLowerCase();
-      return (
-        property.name.toLowerCase().includes(query) ||
-        property.address.toLowerCase().includes(query) ||
-        property.manager.toLowerCase().includes(query)
+    return (
+      property.name.toLowerCase().includes(query) ||
+      property.address.toLowerCase().includes(query) ||
+      property.manager.toLowerCase().includes(query)
       );
     });
   }, [properties, searchQuery]);
@@ -249,7 +252,7 @@ function PropertiesPage() {
 
       console.log("Creating property with payload:", payload);
 
-      const response = await fetch(`${API_BASE_URL}/properties`, {
+      const response = await authFetch(`${API_BASE_URL}/properties`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -453,10 +456,10 @@ function PropertiesPage() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="border-b bg-accent/50">
-                    <tr>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="border-b bg-accent/50">
+                  <tr>
                       <th className="text-left px-4 py-2.5 font-semibold">
                         Property
                       </th>
@@ -481,9 +484,9 @@ function PropertiesPage() {
                       <th className="text-left px-4 py-2.5 font-semibold">
                         Status
                       </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
                     {filteredProperties.map((property: Property) => (
                       <tr
                         key={property.id}
@@ -540,9 +543,9 @@ function PropertiesPage() {
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                </tbody>
+              </table>
+            </div>
             )}
           </CardContent>
         </Card>

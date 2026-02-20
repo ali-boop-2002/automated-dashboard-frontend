@@ -4,18 +4,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/contexts/auth-context'
+import { toast } from 'sonner'
+import { Loader } from 'lucide-react'
 
 export function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const { signIn } = useAuth()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Simple validation - in a real app, you'd validate and authenticate here
-    if (email && password) {
-      // Navigate to dashboard after successful login
+    if (!email || !password) return
+
+    try {
+      setLoading(true)
+      await signIn(email, password)
+      toast.success('Successfully signed in')
       navigate({ to: '/' })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to sign in'
+      toast.error(message)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -51,8 +64,15 @@ export function LoginForm() {
               required
             />
           </div>
-          <Button type="submit" className="w-full">
-            Sign In
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader className="size-4 animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              'Sign In'
+            )}
           </Button>
         </form>
       </CardContent>

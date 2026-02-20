@@ -7,8 +7,11 @@ import { useState, useEffect, useMemo } from "react";
 import { ApprovalDetailModal } from "@/components/approval-detail-modal";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { requireAuth } from "@/lib/auth-guard";
+import { authFetch } from "@/lib/api";
 
 export const Route = createFileRoute("/approvals")({
+  beforeLoad: requireAuth,
   component: ApprovalsPage,
 });
 
@@ -74,7 +77,7 @@ function ApprovalsPage() {
     pendingAmount: 0,
     overdueCount: 0,
   });
-
+  
   // Filter states
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -103,7 +106,7 @@ function ApprovalsPage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(`${API_BASE_URL}/approvals/stats`, {
+      const response = await authFetch(`${API_BASE_URL}/approvals/stats`, {
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -135,7 +138,7 @@ function ApprovalsPage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(`${API_BASE_URL}/approvals`, {
+      const response = await authFetch(`${API_BASE_URL}/approvals`, {
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -244,7 +247,7 @@ function ApprovalsPage() {
     decision: "approved" | "rejected",
   ) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/approvals/${approvalId}`, {
+      const response = await authFetch(`${API_BASE_URL}/approvals/${approvalId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: decision }),
@@ -321,7 +324,7 @@ function ApprovalsPage() {
   // Fetch properties
   const fetchProperties = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/properties`);
+      const response = await authFetch(`${API_BASE_URL}/properties`);
       if (!response.ok) throw new Error("Failed to fetch properties");
       const data: Property[] = await response.json();
       setProperties(data);
@@ -339,7 +342,7 @@ function ApprovalsPage() {
     try {
       setLoadingPropertyTickets(true);
       setPropertyTickets([]);
-      const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`);
+      const response = await authFetch(`${API_BASE_URL}/properties/${propertyId}`);
       if (!response.ok) throw new Error("Failed to fetch property tickets");
       const data = await response.json();
       const ticketsList = data.tickets || [];
@@ -388,7 +391,7 @@ function ApprovalsPage() {
 
       console.log("Creating approval with payload:", payload);
 
-      const response = await fetch(`${API_BASE_URL}/approvals`, {
+      const response = await authFetch(`${API_BASE_URL}/approvals`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -605,9 +608,9 @@ function ApprovalsPage() {
                     .filter((p) => p !== "Unknown")
                     .map((prop) => (
                       <option key={prop} value={prop}>
-                        {prop}
-                      </option>
-                    ))}
+                      {prop}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -671,10 +674,10 @@ function ApprovalsPage() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="border-b bg-accent/50">
-                    <tr>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="border-b bg-accent/50">
+                  <tr>
                       <th className="text-left px-4 py-2.5 font-semibold">
                         ID
                       </th>
@@ -699,10 +702,10 @@ function ApprovalsPage() {
                       <th className="text-left px-4 py-2.5 font-semibold">
                         Status
                       </th>
-                      <th className="text-left px-4 py-2.5 font-semibold"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
+                    <th className="text-left px-4 py-2.5 font-semibold"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
                     {filteredApprovals.map((approval: Approval) => (
                       <tr
                         key={approval.id}
@@ -752,16 +755,16 @@ function ApprovalsPage() {
                         >
                           {approval.age > 24 &&
                             approval.status === "pending" && (
-                              <span className="inline-block px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium">
-                                ⚠️ Overdue
-                              </span>
-                            )}
+                            <span className="inline-block px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium">
+                              ⚠️ Overdue
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                </tbody>
+              </table>
+            </div>
             )}
           </CardContent>
         </Card>

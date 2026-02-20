@@ -6,232 +6,95 @@ import {
   Download,
   ChevronRight,
   AlertTriangle,
-  Eye,
-  Clock,
-  User,
   FileText,
   Shield,
   ChevronDown,
   ChevronUp,
+  Loader,
 } from 'lucide-react'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { requireAuth } from '@/lib/auth-guard'
+import { authFetch, API_BASE_URL } from '@/lib/api'
+import { toast } from 'sonner'
 
 export const Route = createFileRoute('/audit-logs')({
+  beforeLoad: requireAuth,
   component: AuditLogsPage,
 })
+
+// API entity_type: ticket | approval | document | property | unit | rent_payment
+// API action: created | updated | deleted
+// API source: api | ai | system | web
+// API risk_level: low | medium | high
 
 // ============= TYPES =============
 interface AuditLog {
   id: string
   timestamp: string
   actor: {
-    name: string
-    role: string
+    name?: string
+    email?: string
+    role?: string
   }
-  action: 'created' | 'updated' | 'deleted' | 'approved' | 'exported' | 'login' | 'viewed'
-  entity: 'ticket' | 'payment' | 'lease' | 'property' | 'tenant' | 'automation' | 'user'
+  action: string
+  entity: string
   entityId: string
   entityName: string
-  before?: Record<string, any>
-  after?: Record<string, any>
-  source: 'web' | 'mobile' | 'api' | 'n8n' | 'ai_agent'
-  ipAddress: string
-  device: string
-  correlationId: string
+  before?: Record<string, unknown>
+  after?: Record<string, unknown>
+  source: string
+  ipAddress?: string
+  device?: string
+  correlationId?: string
   reason?: string
   riskLevel: 'low' | 'medium' | 'high'
 }
 
-// ============= MOCK DATA =============
-const mockAuditLogs: AuditLog[] = [
-  {
-    id: 'log-001',
-    timestamp: '2026-02-12 14:35:22',
-    actor: { name: 'John Manager', role: 'Property Manager' },
-    action: 'approved',
-    entity: 'ticket',
-    entityId: '#1823',
-    entityName: 'AC Repair - Unit 4A',
-    before: { status: 'pending', assignee: 'unassigned' },
-    after: { status: 'approved', assignee: 'Mike Johnson' },
-    source: 'web',
-    ipAddress: '192.168.1.100',
-    device: 'Chrome / macOS',
-    correlationId: 'corr-2026-02-12-001',
-    reason: 'Emergency repair approved - tenant complaint',
-    riskLevel: 'low',
-  },
-  {
-    id: 'log-002',
-    timestamp: '2026-02-12 14:28:15',
-    actor: { name: 'AI Agent', role: 'System' },
-    action: 'created',
-    entity: 'automation',
-    entityId: 'auto-1823',
-    entityName: 'Emergency Ticket Alert',
-    source: 'ai_agent',
-    ipAddress: 'N/A',
-    device: 'N/A',
-    correlationId: 'corr-2026-02-12-002',
-    riskLevel: 'low',
-  },
-  {
-    id: 'log-003',
-    timestamp: '2026-02-12 13:45:08',
-    actor: { name: 'Admin User', role: 'Administrator' },
-    action: 'updated',
-    entity: 'payment',
-    entityId: 'pay-5421',
-    entityName: 'Unit 4B Rent Payment',
-    before: { status: 'pending', amount: 2200 },
-    after: { status: 'received', amount: 2200, receivedDate: '2026-02-12' },
-    source: 'web',
-    ipAddress: '192.168.1.50',
-    device: 'Safari / macOS',
-    correlationId: 'corr-2026-02-12-003',
-    riskLevel: 'low',
-  },
-  {
-    id: 'log-004',
-    timestamp: '2026-02-12 12:15:32',
-    actor: { name: 'Automation System', role: 'System' },
-    action: 'created',
-    entity: 'ticket',
-    entityId: '#1840',
-    entityName: 'Inspection Flag - Unit 3C',
-    source: 'n8n',
-    ipAddress: 'N/A',
-    device: 'N/A',
-    correlationId: 'corr-2026-02-12-004',
-    riskLevel: 'medium',
-  },
-  {
-    id: 'log-005',
-    timestamp: '2026-02-12 11:22:45',
-    actor: { name: 'Sarah Admin', role: 'Administrator' },
-    action: 'updated',
-    entity: 'lease',
-    entityId: 'lease-3891',
-    entityName: 'Unit 4B - 12 Month Lease',
-    before: { endDate: '2026-06-30', status: 'active' },
-    after: { endDate: '2026-06-30', status: 'renewal_pending' },
-    source: 'web',
-    ipAddress: '192.168.1.75',
-    device: 'Firefox / Windows',
-    correlationId: 'corr-2026-02-12-005',
-    reason: 'Manual renewal trigger',
-    riskLevel: 'low',
-  },
-  {
-    id: 'log-006',
-    timestamp: '2026-02-12 10:50:18',
-    actor: { name: 'Owner User', role: 'Property Owner' },
-    action: 'exported',
-    entity: 'payment',
-    entityId: 'report-2026-02',
-    entityName: 'February 2026 Payment Report',
-    source: 'web',
-    ipAddress: '203.45.67.89',
-    device: 'Mobile Safari / iOS',
-    correlationId: 'corr-2026-02-12-006',
-    riskLevel: 'medium',
-  },
-  {
-    id: 'log-007',
-    timestamp: '2026-02-12 09:33:22',
-    actor: { name: 'System', role: 'System' },
-    action: 'login',
-    entity: 'user',
-    entityId: 'user-john-manager',
-    entityName: 'John Manager',
-    source: 'web',
-    ipAddress: '192.168.1.100',
-    device: 'Chrome / macOS',
-    correlationId: 'corr-2026-02-12-007',
-    riskLevel: 'low',
-  },
-  {
-    id: 'log-008',
-    timestamp: '2026-02-11 16:45:30',
-    actor: { name: 'Admin User', role: 'Administrator' },
-    action: 'deleted',
-    entity: 'automation',
-    entityId: 'auto-1201',
-    entityName: 'Old No-Show Rule',
-    before: { name: 'Old No-Show Rule', status: 'inactive' },
-    source: 'web',
-    ipAddress: '192.168.1.50',
-    device: 'Safari / macOS',
-    correlationId: 'corr-2026-02-11-001',
-    reason: 'Rule replaced with new version',
-    riskLevel: 'medium',
-  },
-  {
-    id: 'log-009',
-    timestamp: '2026-02-11 14:22:15',
-    actor: { name: 'API Service', role: 'System' },
-    action: 'updated',
-    entity: 'tenant',
-    entityId: 'tenant-3829',
-    entityName: 'Robert Wilson - Unit 4B',
-    before: { paymentStatus: 'current', latePayments: 0 },
-    after: { paymentStatus: 'late', latePayments: 1, overdueAmount: 450 },
-    source: 'api',
-    ipAddress: '10.0.0.1',
-    device: 'N/A',
-    correlationId: 'corr-2026-02-11-002',
-    riskLevel: 'high',
-  },
-  {
-    id: 'log-010',
-    timestamp: '2026-02-11 11:08:45',
-    actor: { name: 'Property Manager', role: 'Property Manager' },
-    action: 'viewed',
-    entity: 'payment',
-    entityId: 'pay-5421',
-    entityName: 'Unit 4B Rent Payment',
-    source: 'web',
-    ipAddress: '192.168.1.100',
-    device: 'Chrome / macOS',
-    correlationId: 'corr-2026-02-11-003',
-    riskLevel: 'low',
-  },
-  {
-    id: 'log-011',
-    timestamp: '2026-02-10 17:30:22',
-    actor: { name: 'Admin User', role: 'Administrator' },
-    action: 'updated',
-    entity: 'user',
-    entityId: 'user-jane-smith',
-    entityName: 'Jane Smith',
-    before: { role: 'technician', permissions: ['view_tickets'] },
-    after: { role: 'team_lead', permissions: ['view_tickets', 'assign_tickets', 'approve_work'] },
-    source: 'web',
-    ipAddress: '192.168.1.50',
-    device: 'Safari / macOS',
-    correlationId: 'corr-2026-02-10-001',
-    reason: 'Promotion to team lead',
-    riskLevel: 'high',
-  },
-  {
-    id: 'log-012',
-    timestamp: '2026-02-10 15:12:08',
-    actor: { name: 'Automation System', role: 'System' },
-    action: 'created',
-    entity: 'ticket',
-    entityId: '#1835',
-    entityName: 'Rent Reminder - Unit 1A',
-    source: 'n8n',
-    ipAddress: 'N/A',
-    device: 'N/A',
-    correlationId: 'corr-2026-02-10-002',
-    riskLevel: 'low',
-  },
-]
+interface AuditStats {
+  total?: number
+  today?: number
+  high_risk?: number
+  deletions?: number
+  retention_days?: number
+}
+
+// Normalize API log to AuditLog shape
+function normalizeLog(raw: Record<string, unknown>): AuditLog {
+  const actorEmail = raw.actor_email != null ? String(raw.actor_email) : (raw.actor as Record<string, string>)?.email ?? (typeof raw.actor === 'string' ? raw.actor : '')
+  const actor = raw.actor as Record<string, string> | undefined
+  const actorObj = {
+    name: actorEmail || actor?.name,
+    email: actorEmail || actor?.email,
+    role: actor?.role,
+  }
+
+  return {
+    id: String(raw.id ?? raw.correlation_id ?? Math.random()),
+    timestamp:
+      String(raw.timestamp ?? raw.created_at ?? '') ||
+      new Date().toISOString(),
+    actor: actorObj,
+    action: String(raw.action ?? ''),
+    entity: String(raw.entity_type ?? raw.entity ?? ''),
+    entityId: String(raw.entity_id ?? raw.entityId ?? ''),
+    entityName: String(raw.entity_name ?? raw.entityName ?? ''),
+    before: (raw.before as Record<string, unknown>) ?? undefined,
+    after: (raw.after as Record<string, unknown>) ?? undefined,
+    source: String(raw.source ?? ''),
+    ipAddress: raw.ip_address != null ? String(raw.ip_address) : raw.ipAddress != null ? String(raw.ipAddress) : 'N/A',
+    device: raw.device != null ? String(raw.device) : 'N/A',
+    correlationId: raw.correlation_id != null ? String(raw.correlation_id) : raw.correlationId != null ? String(raw.correlationId) : '',
+    reason: raw.reason != null ? String(raw.reason) : undefined,
+    riskLevel: ((raw.risk_level ?? raw.riskLevel) as 'low' | 'medium' | 'high') || 'low',
+  }
+}
 
 // ============= HELPER FUNCTIONS =============
-const getActionColor = (action: AuditLog['action']) => {
-  const colors: Record<AuditLog['action'], string> = {
+const truncateActor = (s: string, max = 15) =>
+  s.length > max ? `${s.slice(0, max)}...` : s
+
+const getActionColor = (action: string) => {
+  const colors: Record<string, string> = {
     created: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
     updated: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
     deleted: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
@@ -240,31 +103,37 @@ const getActionColor = (action: AuditLog['action']) => {
     login: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
     viewed: 'bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
   }
-  return colors[action]
+  return colors[action] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
 }
 
-const getEntityIcon = (entity: AuditLog['entity']) => {
-  const icons: Record<AuditLog['entity'], string> = {
+const getEntityIcon = (entity: string) => {
+  const icons: Record<string, string> = {
     ticket: '🎫',
+    approval: '✅',
+    document: '📄',
+    property: '🏢',
+    unit: '🚪',
+    rent_payment: '💰',
     payment: '💰',
     lease: '📋',
-    property: '🏢',
     tenant: '👤',
     automation: '🤖',
     user: '👥',
   }
-  return icons[entity]
+  return icons[entity] ?? '📌'
 }
 
-const getSourceColor = (source: AuditLog['source']) => {
-  const colors: Record<AuditLog['source'], string> = {
+const getSourceColor = (source: string) => {
+  const colors: Record<string, string> = {
     web: 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300',
-    mobile: 'bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300',
     api: 'bg-gray-50 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+    ai: 'bg-green-50 text-green-700 dark:bg-green-950/50 dark:text-green-300',
+    system: 'bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300',
+    mobile: 'bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300',
     n8n: 'bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300',
     ai_agent: 'bg-green-50 text-green-700 dark:bg-green-950/50 dark:text-green-300',
   }
-  return colors[source]
+  return colors[source] ?? 'bg-gray-50 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
 }
 
 const getRiskBadgeColor = (riskLevel: AuditLog['riskLevel']) => {
@@ -285,9 +154,24 @@ const getRiskIcon = (riskLevel: AuditLog['riskLevel']) => {
   }
 }
 
+// Build ISO date range from filter (e.g. "30" -> last 30 days)
+function getDateRangeFromFilter(days: string): { start_date: string; end_date: string } {
+  const d = parseInt(days, 10) || 30
+  const end = new Date()
+  const start = new Date()
+  start.setDate(start.getDate() - d)
+  return {
+    start_date: start.toISOString(),
+    end_date: end.toISOString(),
+  }
+}
+
 // ============= MAIN AUDIT LOGS COMPONENT =============
 function AuditLogsPage() {
-  const [logs, setLogs] = useState<AuditLog[]>(mockAuditLogs)
+  const [logs, setLogs] = useState<AuditLog[]>([])
+  const [stats, setStats] = useState<AuditStats>({})
+  const [loading, setLoading] = useState(true)
+  const [loadingStats, setLoadingStats] = useState(true)
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null)
   const [showDetailDrawer, setShowDetailDrawer] = useState(false)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
@@ -301,32 +185,86 @@ function AuditLogsPage() {
   const [filterRiskLevel, setFilterRiskLevel] = useState('all')
   const [showHighRiskOnly, setShowHighRiskOnly] = useState(false)
 
-  // Filtered logs
-  const filteredLogs = useMemo(() => {
-    return logs.filter((log) => {
-      const actorMatch = filterActor === 'all' || log.actor.name === filterActor
-      const entityMatch = filterEntity === 'all' || log.entity === filterEntity
-      const actionMatch = filterAction === 'all' || log.action === filterAction
-      const sourceMatch = filterSource === 'all' || log.source === filterSource
-      const riskMatch = filterRiskLevel === 'all' || log.riskLevel === filterRiskLevel
-      const highRiskMatch = !showHighRiskOnly || log.riskLevel === 'high'
+  const fetchLogs = useCallback(async () => {
+    try {
+      setLoading(true)
+      const { start_date, end_date } = getDateRangeFromFilter(filterDateRange)
+      const params = new URLSearchParams()
+      params.set('start_date', start_date)
+      params.set('end_date', end_date)
+      if (filterActor !== 'all') params.set('actor', filterActor)
+      if (filterEntity !== 'all') params.set('entity_type', filterEntity)
+      if (filterAction !== 'all') params.set('action', filterAction)
+      if (filterSource !== 'all') params.set('source', filterSource)
+      if (filterRiskLevel !== 'all') params.set('risk_level', filterRiskLevel)
+      if (showHighRiskOnly) params.set('high_risk_only', 'true')
+      params.set('limit', '100')
+      params.set('offset', '0')
 
-      return actorMatch && entityMatch && actionMatch && sourceMatch && riskMatch && highRiskMatch
-    })
-  }, [logs, filterActor, filterEntity, filterAction, filterSource, filterRiskLevel, showHighRiskOnly])
+      const res = await authFetch(`${API_BASE_URL}/audit-logs?${params}`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }))
+        throw new Error(err.detail ?? 'Failed to fetch audit logs')
+      }
+      const data = await res.json()
+      const items = Array.isArray(data) ? data : data.logs ?? data.items ?? []
+      setLogs(items.map((item: Record<string, unknown>) => normalizeLog(item)))
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to load audit logs'
+      toast.error(msg)
+      setLogs([])
+    } finally {
+      setLoading(false)
+    }
+  }, [
+    filterDateRange,
+    filterActor,
+    filterEntity,
+    filterAction,
+    filterSource,
+    filterRiskLevel,
+    showHighRiskOnly,
+  ])
 
-  // Stats
-  const stats = useMemo(
-    () => ({
-      total: logs.length,
-      today: logs.filter((l) => l.timestamp.startsWith('2026-02-12')).length,
-      highRisk: logs.filter((l) => l.riskLevel === 'high').length,
-      deletions: logs.filter((l) => l.action === 'deleted').length,
-    }),
+  const fetchStats = useCallback(async () => {
+    try {
+      setLoadingStats(true)
+      const res = await authFetch(`${API_BASE_URL}/audit-logs/stats`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }))
+        throw new Error(err.detail ?? 'Failed to fetch stats')
+      }
+      const data = await res.json()
+      setStats({
+        total: data.total ?? data.total_logs ?? 0,
+        today: data.today ?? data.today_count ?? 0,
+        high_risk: data.high_risk ?? data.high_risk_count ?? 0,
+        deletions: data.deletions ?? data.deletion_count ?? 0,
+        retention_days: data.retention_days ?? 90,
+      })
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to load stats'
+      toast.error(msg)
+      setStats({})
+    } finally {
+      setLoadingStats(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchLogs()
+  }, [fetchLogs])
+
+  useEffect(() => {
+    fetchStats()
+  }, [fetchStats])
+
+  const filteredLogs = logs
+
+  const uniqueActors = useMemo(
+    () => [...new Set(logs.map((l) => l.actor.email ?? l.actor.name).filter(Boolean))],
     [logs]
   )
-
-  const uniqueActors = useMemo(() => [...new Set(logs.map((l) => l.actor.name))], [logs])
 
   const handleRowClick = (log: AuditLog) => {
     setSelectedLog(log)
@@ -345,7 +283,15 @@ function AuditLogsPage() {
 
   const downloadLogs = (format: 'csv' | 'json') => {
     const timestamp = new Date().toISOString().split('T')[0]
-    alert(`📥 ${filteredLogs.length} logs exported as ${format.toUpperCase()} - ${timestamp}`)
+    toast.info(`${filteredLogs.length} logs exported as ${format.toUpperCase()} - ${timestamp}`)
+  }
+
+  const displayStats = {
+    total: stats.total ?? 0,
+    today: stats.today ?? 0,
+    highRisk: stats.high_risk ?? 0,
+    deletions: stats.deletions ?? 0,
+    retentionDays: stats.retention_days ?? 90,
   }
 
   return (
@@ -385,30 +331,44 @@ function AuditLogsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4">
-              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Total Logs</p>
-              <p className="text-2xl font-bold">{stats.total}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{stats.today} today</p>
+              <p className="text-xs text-muted-foreground mb-1">Total Logs</p>
+              {loadingStats ? (
+                <Loader className="size-6 animate-spin text-muted-foreground" />
+              ) : (
+                <>
+                  <p className="text-2xl font-bold">{displayStats.total}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{displayStats.today} today</p>
+                </>
+              )}
             </CardContent>
           </Card>
 
           <Card className="bg-red-50 border-red-200 dark:bg-red-950/40 dark:border-red-800">
             <CardContent className="p-4">
               <p className="text-xs text-red-600 dark:text-red-400 font-semibold mb-1">High Risk Events</p>
-              <p className="text-2xl font-bold text-red-700 dark:text-red-400">{stats.highRisk}</p>
+              {loadingStats ? (
+                <Loader className="size-6 animate-spin text-red-600" />
+              ) : (
+                <p className="text-2xl font-bold text-red-700 dark:text-red-400">{displayStats.highRisk}</p>
+              )}
             </CardContent>
           </Card>
 
           <Card className="bg-orange-50 border-orange-200 dark:bg-orange-950/40 dark:border-orange-800">
             <CardContent className="p-4">
               <p className="text-xs text-orange-600 dark:text-orange-400 font-semibold mb-1">Deletions</p>
-              <p className="text-2xl font-bold text-orange-700 dark:text-orange-400">{stats.deletions}</p>
+              {loadingStats ? (
+                <Loader className="size-6 animate-spin text-orange-600" />
+              ) : (
+                <p className="text-2xl font-bold text-orange-700 dark:text-orange-400">{displayStats.deletions}</p>
+              )}
             </CardContent>
           </Card>
 
           <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-800">
             <CardContent className="p-4">
               <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold mb-1">Retention</p>
-              <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">90 days</p>
+              <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{displayStats.retentionDays} days</p>
             </CardContent>
           </Card>
         </div>
@@ -457,13 +417,12 @@ function AuditLogsPage() {
                     className="w-full h-8 px-2.5 rounded-md border border-input bg-background text-xs"
                   >
                     <option value="all">All Entities</option>
-                    <option value="ticket">🎫 Ticket</option>
-                    <option value="payment">💰 Payment</option>
-                    <option value="lease">📋 Lease</option>
-                    <option value="property">🏢 Property</option>
-                    <option value="tenant">👤 Tenant</option>
-                    <option value="automation">🤖 Automation</option>
-                    <option value="user">👥 User</option>
+                    <option value="ticket">Ticket</option>
+                    <option value="approval">Approval</option>
+                    <option value="document">Document</option>
+                    <option value="property">Property</option>
+                    <option value="unit">Unit</option>
+                    <option value="rent_payment">Rent Payment</option>
                   </select>
                 </div>
 
@@ -478,9 +437,6 @@ function AuditLogsPage() {
                     <option value="created">Created</option>
                     <option value="updated">Updated</option>
                     <option value="deleted">Deleted</option>
-                    <option value="approved">Approved</option>
-                    <option value="exported">Exported</option>
-                    <option value="login">Login</option>
                   </select>
                 </div>
 
@@ -493,10 +449,9 @@ function AuditLogsPage() {
                   >
                     <option value="all">All Sources</option>
                     <option value="web">Web</option>
-                    <option value="mobile">Mobile</option>
                     <option value="api">API</option>
-                    <option value="n8n">n8n</option>
-                    <option value="ai_agent">AI Agent</option>
+                    <option value="ai">AI</option>
+                    <option value="system">System</option>
                   </select>
                 </div>
 
@@ -533,12 +488,12 @@ function AuditLogsPage() {
         </Card>
 
         {/* High-Risk Events Section */}
-        {stats.highRisk > 0 && (
+        {displayStats.highRisk > 0 && (
           <Card className="border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/50">
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
                 <Shield className="w-4 h-4 text-red-600 dark:text-red-400" />
-                High-Risk Events ({stats.highRisk})
+                High-Risk Events ({displayStats.highRisk})
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -548,8 +503,8 @@ function AuditLogsPage() {
                 .map((log) => (
                   <div key={log.id} className="flex items-start justify-between p-2 bg-white dark:bg-gray-900 rounded border border-red-200 dark:border-red-800">
                     <div className="flex-1">
-                      <p className="text-xs font-semibold text-gray-900">
-                        {log.actor.name} {log.action}d {getEntityIcon(log.entity)} {log.entityName}
+                      <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                        {truncateActor(log.actor.name ?? log.actor.email ?? 'Unknown')} {log.action}d {getEntityIcon(log.entity)} {log.entityName}
                       </p>
                       <p className="text-xs text-gray-600 mt-0.5">{log.timestamp}</p>
                     </div>
@@ -571,6 +526,11 @@ function AuditLogsPage() {
             <CardTitle className="text-sm">Activity Feed ({filteredLogs.length})</CardTitle>
           </CardHeader>
           <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader className="size-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
             <div className="space-y-2">
               {/* Header Row */}
               <div className="grid grid-cols-8 gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-lg border font-semibold text-xs">
@@ -614,9 +574,11 @@ function AuditLogsPage() {
                       </div>
 
                       {/* Actor */}
-                      <div className="text-xs">
-                        <p className="text-gray-900 font-medium">{log.actor.name}</p>
-                        <p className="text-gray-500">{log.actor.role}</p>
+                      <div className="text-xs min-w-0">
+                        <p className="text-gray-900 dark:text-gray-100 font-medium" title={log.actor.name ?? log.actor.email ?? '—'}>
+                          {truncateActor(log.actor.name ?? log.actor.email ?? '—')}
+                        </p>
+                        <p className="text-gray-500">{log.actor.role ?? '—'}</p>
                       </div>
 
                       {/* Action */}
@@ -640,7 +602,7 @@ function AuditLogsPage() {
                       {/* Source */}
                       <div className="text-xs">
                         <span className={`px-2 py-1 rounded text-xs font-semibold inline-block ${getSourceColor(log.source)}`}>
-                          {log.source === 'ai_agent' ? 'AI' : log.source}
+                          {log.source === 'ai_agent' || log.source === 'ai' ? 'AI' : log.source}
                         </span>
                       </div>
 
@@ -654,7 +616,7 @@ function AuditLogsPage() {
 
                       {/* Correlation ID */}
                       <div className="text-xs">
-                        <p className="font-mono text-gray-900">{log.correlationId}</p>
+                        <p className="font-mono text-gray-900 dark:text-gray-100">{log.correlationId || '—'}</p>
                       </div>
                     </div>
 
@@ -720,6 +682,7 @@ function AuditLogsPage() {
                 </div>
               )}
             </div>
+            )}
           </CardContent>
         </Card>
 
@@ -760,8 +723,8 @@ function AuditLogsPage() {
               {/* Summary */}
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-gray-700">Summary</p>
-                <p className="text-sm text-gray-900">
-                  {selectedLog.actor.name} {selectedLog.action}d {getEntityIcon(selectedLog.entity)} {selectedLog.entityName}
+                <p className="text-sm text-gray-900 dark:text-gray-100">
+                  {truncateActor(selectedLog.actor.name ?? selectedLog.actor.email ?? 'Unknown', 15)} {selectedLog.action}d {getEntityIcon(selectedLog.entity)} {selectedLog.entityName}
                 </p>
               </div>
 
@@ -773,13 +736,15 @@ function AuditLogsPage() {
                     <span className="text-gray-600">Timestamp:</span>
                     <span className="font-mono text-gray-900">{selectedLog.timestamp}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Actor:</span>
-                    <span className="text-gray-900">{selectedLog.actor.name}</span>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-600 shrink-0">Actor:</span>
+                    <span className="text-gray-900 dark:text-gray-100 truncate text-right" title={selectedLog.actor.name ?? selectedLog.actor.email ?? '—'}>
+                      {truncateActor(selectedLog.actor.name ?? selectedLog.actor.email ?? '—', 15)}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Role:</span>
-                    <span className="text-gray-900">{selectedLog.actor.role}</span>
+                    <span className="text-gray-900 dark:text-gray-100">{selectedLog.actor.role ?? '—'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Entity ID:</span>
@@ -787,11 +752,11 @@ function AuditLogsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">IP Address:</span>
-                    <span className="font-mono text-gray-900">{selectedLog.ipAddress}</span>
+                    <span className="font-mono text-gray-900 dark:text-gray-100">{selectedLog.ipAddress ?? '—'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Device:</span>
-                    <span className="text-gray-900">{selectedLog.device}</span>
+                    <span className="text-gray-900 dark:text-gray-100">{selectedLog.device ?? '—'}</span>
                   </div>
                 </div>
               </div>
@@ -828,7 +793,7 @@ function AuditLogsPage() {
               {/* Correlation */}
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-gray-700">Correlation ID</p>
-                <p className="text-xs font-mono text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-2 rounded border">{selectedLog.correlationId}</p>
+                <p className="text-xs font-mono text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-2 rounded border">{selectedLog.correlationId ?? '—'}</p>
                 <p className="text-xs text-gray-600">
                   This ID links related events in a chain of actions.
                 </p>

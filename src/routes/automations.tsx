@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, Edit2, Trash2, Power, Bell, Clock, DollarSign, FileText, Wrench } from 'lucide-react'
 import { useState, useMemo } from 'react'
+import { requireAuth } from '@/lib/auth-guard'
 
 export const Route = createFileRoute('/automations')({
+  beforeLoad: requireAuth,
   component: AutomationsPage,
 })
 

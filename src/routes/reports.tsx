@@ -27,8 +27,11 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { requireAuth } from "@/lib/auth-guard";
+import { authFetch, API_BASE_URL as LIB_API_BASE } from "@/lib/api";
 
 export const Route = createFileRoute("/reports")({
+  beforeLoad: requireAuth,
   component: ReportsPage,
 });
 
@@ -216,7 +219,7 @@ function ReportsPage() {
         selectedTechnician,
       );
       const url = `${API_BASE_URL}/reports/analytics/${format}${params.toString() ? `?${params.toString()}` : ""}`;
-      const response = await fetch(url);
+      const response = await authFetch(url);
       if (!response.ok)
         throw new Error(`Failed to download ${format.toUpperCase()}`);
       const blob = await response.blob();
@@ -284,7 +287,7 @@ function ReportsPage() {
         const url = `${API_BASE_URL}/reports/analytics${params.toString() ? `?${params.toString()}` : ""}`;
         console.log("Fetching reports from:", url);
 
-        const response = await fetch(url);
+        const response = await authFetch(url);
         if (!response.ok) {
           throw new Error(`Failed to fetch reports: ${response.status}`);
         }

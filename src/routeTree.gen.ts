@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TicketsRouteImport } from './routes/tickets'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as PropertiesRouteImport } from './routes/properties'
+import { Route as MemoryRouteImport } from './routes/memory'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AutomationsRouteImport } from './routes/automations'
@@ -32,6 +33,11 @@ const ReportsRoute = ReportsRouteImport.update({
 const PropertiesRoute = PropertiesRouteImport.update({
   id: '/properties',
   path: '/properties',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MemoryRoute = MemoryRouteImport.update({
+  id: '/memory',
+  path: '/memory',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/automations': typeof AutomationsRoute
   '/calendar': typeof CalendarRoute
   '/login': typeof LoginRoute
+  '/memory': typeof MemoryRoute
   '/properties': typeof PropertiesRoute
   '/reports': typeof ReportsRoute
   '/tickets': typeof TicketsRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/automations': typeof AutomationsRoute
   '/calendar': typeof CalendarRoute
   '/login': typeof LoginRoute
+  '/memory': typeof MemoryRoute
   '/properties': typeof PropertiesRoute
   '/reports': typeof ReportsRoute
   '/tickets': typeof TicketsRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/automations': typeof AutomationsRoute
   '/calendar': typeof CalendarRoute
   '/login': typeof LoginRoute
+  '/memory': typeof MemoryRoute
   '/properties': typeof PropertiesRoute
   '/reports': typeof ReportsRoute
   '/tickets': typeof TicketsRoute
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/automations'
     | '/calendar'
     | '/login'
+    | '/memory'
     | '/properties'
     | '/reports'
     | '/tickets'
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/automations'
     | '/calendar'
     | '/login'
+    | '/memory'
     | '/properties'
     | '/reports'
     | '/tickets'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/automations'
     | '/calendar'
     | '/login'
+    | '/memory'
     | '/properties'
     | '/reports'
     | '/tickets'
@@ -142,6 +154,7 @@ export interface RootRouteChildren {
   AutomationsRoute: typeof AutomationsRoute
   CalendarRoute: typeof CalendarRoute
   LoginRoute: typeof LoginRoute
+  MemoryRoute: typeof MemoryRoute
   PropertiesRoute: typeof PropertiesRoute
   ReportsRoute: typeof ReportsRoute
   TicketsRoute: typeof TicketsRoute
@@ -168,6 +181,13 @@ declare module '@tanstack/react-router' {
       path: '/properties'
       fullPath: '/properties'
       preLoaderRoute: typeof PropertiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/memory': {
+      id: '/memory'
+      path: '/memory'
+      fullPath: '/memory'
+      preLoaderRoute: typeof MemoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -222,6 +242,7 @@ const rootRouteChildren: RootRouteChildren = {
   AutomationsRoute: AutomationsRoute,
   CalendarRoute: CalendarRoute,
   LoginRoute: LoginRoute,
+  MemoryRoute: MemoryRoute,
   PropertiesRoute: PropertiesRoute,
   ReportsRoute: ReportsRoute,
   TicketsRoute: TicketsRoute,

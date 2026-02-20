@@ -3,8 +3,10 @@ import { SimpleLayout } from '@/components/simple-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertCircle, Clock, CheckCircle, Flag, Calendar } from 'lucide-react'
+import { requireAuth } from '@/lib/auth-guard'
 
 export const Route = createFileRoute('/')({
+  beforeLoad: requireAuth,
   component: HomePage,
 })
 

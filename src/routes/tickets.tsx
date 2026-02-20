@@ -8,7 +8,11 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { env } from "@/env";
 
+import { requireAuth } from '@/lib/auth-guard'
+import { authFetch } from '@/lib/api'
+
 export const Route = createFileRoute("/tickets")({
+  beforeLoad: requireAuth,
   component: TicketsPage,
 });
 
@@ -95,7 +99,7 @@ function TicketsPage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(`${API_BASE_URL}/properties`, {
+      const response = await authFetch(`${API_BASE_URL}/properties`, {
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -123,7 +127,7 @@ function TicketsPage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(`${API_BASE_URL}/tickets/`, {
+      const response = await authFetch(`${API_BASE_URL}/tickets/`, {
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
@@ -205,7 +209,7 @@ function TicketsPage() {
         (key) => payload[key] === undefined && delete payload[key],
       );
 
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE_URL}/tickets/${editingTicket.id}`,
         {
           method: "PATCH",
@@ -270,7 +274,7 @@ function TicketsPage() {
       console.log("Bulk updating", selectedIds.size, "tickets with:", updates);
 
       const updatePromises = Array.from(selectedIds).map((id) =>
-        fetch(`${API_BASE_URL}/tickets/${id}`, {
+        authFetch(`${API_BASE_URL}/tickets/${id}`, {
           method: "PATCH",
           headers: {
             Accept: "application/json",
@@ -332,7 +336,7 @@ function TicketsPage() {
         payload.maintenance_category = newTicketForm.maintenance_category;
       }
 
-      const response = await fetch(`${API_BASE_URL}/tickets/`, {
+      const response = await authFetch(`${API_BASE_URL}/tickets/`, {
         method: "POST",
         headers: {
           Accept: "application/json",

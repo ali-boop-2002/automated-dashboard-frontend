@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { env } from "@/env";
+import { authFetch } from "@/lib/api";
 
 const API_BASE_URL = env.VITE_API_BASE_URL;
 
@@ -131,7 +132,7 @@ export function PropertyDetailModal({
     if (!propertyData) return;
     try {
       setDeleting(true);
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE_URL}/properties/${propertyData.id}`,
         {
           method: "DELETE",
@@ -166,7 +167,7 @@ export function PropertyDetailModal({
         setLoading(true);
         setError(null);
 
-        const response = await fetch(
+        const response = await authFetch(
           `${API_BASE_URL}/properties/${property.id}`,
         );
         if (!response.ok) {
@@ -198,7 +199,7 @@ export function PropertyDetailModal({
 
   const fetchUnits = async (propertyId: number) => {
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE_URL}/units?property_id=${propertyId}`,
       );
       if (!response.ok) {
@@ -240,7 +241,7 @@ export function PropertyDetailModal({
         payload.rent_amount = editingUnitValues.rent_amount;
       }
 
-      const response = await fetch(`${API_BASE_URL}/units/${unitId}`, {
+      const response = await authFetch(`${API_BASE_URL}/units/${unitId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

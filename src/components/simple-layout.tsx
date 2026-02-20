@@ -12,11 +12,13 @@ import {
   BarChart3, 
   Zap, 
   FileText,
+  Brain,
   MessageCircle,
   Sun,
   Moon
 } from 'lucide-react'
 import { useTheme } from '@/contexts/theme-context'
+import { useAuth } from '@/contexts/auth-context'
 
 interface SimpleLayoutProps {
   children: ReactNode
@@ -32,11 +34,17 @@ export function SimpleLayout({ children }: SimpleLayoutProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const { theme, setTheme } = useTheme()
+  const { signOut } = useAuth()
   const [isChatOpen, setIsChatOpen] = useState(false)
 
-  const handleLogout = () => {
-    // In a real app, you'd clear auth tokens here
-    navigate({ to: '/login' })
+  const handleLogout = async () => {
+    try {
+      await signOut()
+      navigate({ to: '/login' })
+    } catch (error) {
+      console.error('Logout error:', error)
+      navigate({ to: '/login' })
+    }
   }
 
   const navItems: NavItem[] = [
@@ -48,6 +56,7 @@ export function SimpleLayout({ children }: SimpleLayoutProps) {
     { label: 'Reports', icon: <BarChart3 className="size-5" />, href: '/reports' },
     { label: 'Automations', icon: <Zap className="size-5" />, href: '/automations' },
     { label: 'Audit Logs', icon: <FileText className="size-5" />, href: '/audit-logs' },
+    { label: 'Memory', icon: <Brain className="size-5" />, href: '/memory' },
   ]
 
   return (

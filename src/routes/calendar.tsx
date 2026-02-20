@@ -12,8 +12,11 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
+import { requireAuth } from "@/lib/auth-guard";
+import { authFetch } from "@/lib/api";
 
 export const Route = createFileRoute("/calendar")({
+  beforeLoad: requireAuth,
   component: CalendarPage,
 });
 
@@ -95,11 +98,11 @@ const getEventBgColor = (type: CalendarEvent["type"]) => {
 
 const getEventTypeLabel = (type: CalendarEvent["type"]) => {
   const labels: Record<CalendarEvent["type"], string> = {
-    maintenance: "🔵 Maintenance",
-    lease: "🟢 Lease",
-    inspection: "🟡 Inspection",
-    rent: "🟣 Rent",
-    vendor: "🩷 Vendor",
+    maintenance: "Maintenance",
+    lease: "Lease",
+    inspection: "Inspection",
+    rent: "Rent",
+    vendor: "Vendor",
   };
   return labels[type];
 };
@@ -261,7 +264,7 @@ function CalendarPage() {
 
     try {
       setLoadingPropertyData(true);
-      const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`);
+      const response = await authFetch(`${API_BASE_URL}/properties/${propertyId}`);
       if (!response.ok) throw new Error('Failed to fetch property details');
 
       const data = await response.json();
@@ -284,8 +287,8 @@ function CalendarPage() {
 
         // Fetch events and properties in parallel
         const [eventsRes, propertiesRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/events`),
-          fetch(`${API_BASE_URL}/properties`),
+          authFetch(`${API_BASE_URL}/events`),
+          authFetch(`${API_BASE_URL}/properties`),
         ]);
 
         let propertiesData: Property[] = [];
@@ -369,7 +372,7 @@ function CalendarPage() {
   // Refresh events helper
   const refreshEvents = async () => {
     try {
-      const eventsRes = await fetch(`${API_BASE_URL}/events`);
+      const eventsRes = await authFetch(`${API_BASE_URL}/events`);
       if (eventsRes.ok) {
         const eventsData: ApiEvent[] = await eventsRes.json();
         const transformed: CalendarEvent[] = eventsData.map((event) => {
@@ -417,7 +420,7 @@ function CalendarPage() {
       if (editEventForm.description) payload.description = editEventForm.description;
       if (editEventForm.due_date) payload.due_date = new Date(editEventForm.due_date).toISOString();
 
-      const response = await fetch(`${API_BASE_URL}/events/${selectedEvent.id}`, {
+      const response = await authFetch(`${API_BASE_URL}/events/${selectedEvent.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -458,7 +461,7 @@ function CalendarPage() {
       if (newEventForm.ticket_id) payload.ticket_id = parseInt(newEventForm.ticket_id);
       if (newEventForm.approval_id) payload.approval_id = newEventForm.approval_id;
 
-      const response = await fetch(`${API_BASE_URL}/events`, {
+      const response = await authFetch(`${API_BASE_URL}/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -979,19 +982,26 @@ function CalendarPage() {
                 <CardTitle className="text-sm">Event Types</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {[
-                  { type: "maintenance", icon: "🔵", label: "Maintenance" },
-                  { type: "lease", icon: "🟢", label: "Lease" },
-                  { type: "inspection", icon: "🟡", label: "Inspection" },
-                  { type: "rent", icon: "🟣", label: "Rent" },
-                  { type: "vendor", icon: "🩷", label: "Vendor" },
-                ].map((item) => (
+                {(
+                  [
+                    "maintenance",
+                    "lease",
+                    "inspection",
+                    "rent",
+                    "vendor",
+                  ] as CalendarEvent["type"][]
+                ).map((type) => (
                   <div
-                    key={item.type}
+                    key={type}
                     className="flex items-center gap-2 text-xs"
                   >
-                    <span className="text-lg">{item.icon}</span>
-                    <span className="text-gray-700">{item.label}</span>
+                    <span
+                      className={`w-2.5 h-2.5 rounded-sm shrink-0 ${getEventBgColor(type)}`}
+                      aria-hidden
+                    />
+                    <span className="text-muted-foreground dark:text-gray-300">
+                      {getEventTypeLabel(type)}
+                    </span>
                   </div>
                 ))}
               </CardContent>
@@ -1052,7 +1062,11 @@ function CalendarPage() {
                   </span>
                   <div>
                     <CardTitle>{selectedEvent.title}</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
+                      <span
+                        className={`w-2.5 h-2.5 rounded-sm shrink-0 ${getEventBgColor(selectedEvent.type)}`}
+                        aria-hidden
+                      />
                       {getEventTypeLabel(selectedEvent.type)}
                     </p>
                   </div>

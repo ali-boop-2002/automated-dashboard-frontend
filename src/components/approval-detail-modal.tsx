@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { env } from "@/env";
+import { authFetch } from "@/lib/api";
 
 const API_BASE_URL = env.VITE_API_BASE_URL;
 
@@ -67,7 +68,7 @@ export function ApprovalDetailModal({
       setLoadingTicket(true);
       setTicketIssue(null);
       try {
-        const res = await fetch(`${API_BASE_URL}/tickets/${ticketId}`);
+        const res = await authFetch(`${API_BASE_URL}/tickets/${ticketId}`);
         if (!res.ok) throw new Error("Failed to fetch ticket");
         const data = await res.json();
         if (!cancelled) setTicketIssue(data.issue ?? "");
@@ -93,7 +94,7 @@ export function ApprovalDetailModal({
       setLoadingProperty(true);
       setPropertyAddress(null);
       try {
-        const res = await fetch(`${API_BASE_URL}/properties/${propertyId}`);
+        const res = await authFetch(`${API_BASE_URL}/properties/${propertyId}`);
         if (!res.ok) throw new Error("Failed to fetch property");
         const data = await res.json();
         if (!cancelled)
